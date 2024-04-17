@@ -34,6 +34,7 @@ const apiMap = {
 		fetchAllowIp: false,
 		domainBlacklist: ['localhost', /\.local$/],
 		domainWhitelist: [/\./],
+		fetchMaxContentLength:  100 /* 100 kB */ * 1000,
 	})
 }
 
