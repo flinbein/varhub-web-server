@@ -75,8 +75,8 @@ export const createRoom = (varhub: Hub): FastifyPluginCallback => async (fastify
 			const userAgentHeader = request.headers["user-agent"];
 			if (userAgentHeader?.includes("VARHUB-API")) {
 				return reply.code(403).send({
-					type: "user-agent",
-					message: `forbidden for this user-agent: ${userAgentHeader}`,
+					type: "forbidden",
+					message: `forbidden for user-agent: ${userAgentHeader}`,
 				});
 			}
 			
@@ -86,7 +86,7 @@ export const createRoom = (varhub: Hub): FastifyPluginCallback => async (fastify
 			if (integrity && typeof userIntegrity === "string" && integrity !== userIntegrity)  {
 				console.log("userIntegrity", typeof userIntegrity, userIntegrity);
 				return reply.code(400).send({
-					type: "integrity",
+					type: "Integrity",
 					message: `integrity check error. Got ${userIntegrity}, but expected ${integrity}!`,
 				});
 			}

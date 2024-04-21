@@ -4,6 +4,7 @@ import yargs from 'yargs/yargs';
 import { hideBin } from 'yargs/helpers';
 import Fastify from "fastify";
 import fastifyWebSocket from "@fastify/websocket";
+import cors from '@fastify/cors'
 import { createRoom } from "./methods/createRoom.js";
 import { joinRoom } from "./methods/joinRoom.js";
 import { getRoomMessage } from "./methods/getRoomMessage.js";
@@ -15,6 +16,7 @@ const port = Number(argv.port ?? 8088);
 const varhub = new Hub();
 const fastify = Fastify();
 
+await fastify.register(cors); // enable cors
 await fastify.register(fastifyWebSocket); // enable websockets
 
 

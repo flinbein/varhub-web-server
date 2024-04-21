@@ -36,6 +36,14 @@ export const joinRoom = (varhub: Hub): FastifyPluginCallback => async (fastify) 
 					message: `Room not found: ${params.roomId}`
 				}));
 			}
+			if (query.integrity != null) {
+				if (varhub.getRoomIntegrity(params.roomId) !== query.integrity) {
+					return websocket.close(4000, JSON.stringify({
+						type: 'Integrity',
+						message: `Room integrity mismatch: ${query.integrity}`
+					}));
+				}
+			}
 			let roomParams = undefined;
 			try {
 				if (query.params) roomParams = JSON.parse(query.params);
