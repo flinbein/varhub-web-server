@@ -17,10 +17,11 @@ const fastify = Fastify();
 
 await fastify.register(fastifyWebSocket); // enable websockets
 
-await fastify.register(createRoom(varhub)); //  POST /room
-await fastify.register(joinRoom(varhub)); //  // WS /room/:roomId
-await fastify.register(getRoomMessage(varhub)); //  GET /room/:roomId?integrity:string
-await fastify.register(getRooms(varhub)); //  GET /rooms/:integrity
+
+await fastify.register(createRoom(varhub)); // POST /room
+await fastify.register(joinRoom(varhub)); // WS /room/:roomId
+await fastify.register(getRoomMessage(varhub)); // GET /room/:roomId?integrity:string
+await fastify.register(getRooms(varhub)); // GET /rooms/:integrity
 
 const result = await fastify.listen({ port });
 

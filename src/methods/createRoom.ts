@@ -10,8 +10,8 @@ import type { FastifyPluginCallback } from "fastify";
 const apiMap = {
 	"network": createNetworkApi({
 		fetchPoolTimeout: 10_000, // 10s
-		fetchMaxActiveCount: 5,
 		fetchPoolCount: 10,
+		fetchMaxActiveCount: 5,
 		ipBlacklist: [
 			"0.0.0.0/8", // Software
 			"10.0.0.0/8", // Private network
@@ -35,6 +35,9 @@ const apiMap = {
 		domainBlacklist: ['localhost', /\.local$/],
 		domainWhitelist: [/\./],
 		fetchMaxContentLength:  100 /* 100 kB */ * 1000,
+		fetchHeaders: {
+			"user-agent": "Mozilla/5.0 (compatible; VARHUB-API/1.0)",
+		}
 	})
 }
 
@@ -68,12 +71,21 @@ export const createRoom = (varhub: Hub): FastifyPluginCallback => async (fastify
 		{schema: {body: bodySchema}},
 		(request, reply) => {
 			reply.type("application/json");
+			
+			const userAgentHeader = request.headers["user-agent"];
+			if (userAgentHeader?.includes("VARHUB-API")) {
+				return reply.code(403).send({
+					type: "user-agent",
+					message: `forbidden for this user-agent: ${userAgentHeader}`,
+				});
+			}
+			
 			const userIntegrity = request.body.integrity;
 			const moduleParam = request.body.module;
 			const integrity = userIntegrity ? jsonHash(moduleParam, "sha256", "hex") : undefined;
 			if (integrity && typeof userIntegrity === "string" && integrity !== userIntegrity)  {
 				console.log("userIntegrity", typeof userIntegrity, userIntegrity);
-				return reply.code(200).send({
+				return reply.code(400).send({
 					type: "integrity",
 					message: `integrity check error. Got ${userIntegrity}, but expected ${integrity}!`,
 				});
@@ -88,10 +100,12 @@ export const createRoom = (varhub: Hub): FastifyPluginCallback => async (fastify
 			
 			new TimeoutDestroyController(room, 1000 * 60 * 2 /* 2 min */);
 			const apiHelperController = new ApiHelperController(room, apiMap)
-			const ctrl = new QuickJSController(room, quickJS, moduleParam, {config, apiHelperController});
-			ctrl.on("console", (level, ...args) => {
-				console.log("%s",`[Room ${roomId}] ${level}:`, ...args);
-			})
+			new QuickJSController(room, quickJS, moduleParam, {config, apiHelperController})
+				.on("console", (level, ...args) => {
+					console.log("%s",`[Room ${roomId}] ${level}:`, ...args);
+				})
+				.start()
+			;
 			return reply.code(200).send({id: roomId, integrity: integrity ?? null, message: room.publicMessage});
 		}
 	);
