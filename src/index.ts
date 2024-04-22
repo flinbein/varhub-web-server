@@ -25,6 +25,6 @@ await fastify.register(joinRoom(varhub)); // WS /room/:roomId
 await fastify.register(getRoomMessage(varhub)); // GET /room/:roomId?integrity:string
 await fastify.register(getRooms(varhub)); // GET /rooms/:integrity
 
-const result = await fastify.listen({ port });
+const result = await fastify.listen({ port, host: "0.0.0.0" });
 
 console.log(`Start server on port ${port}: ${result}`);
