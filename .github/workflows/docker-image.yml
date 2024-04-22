@@ -1,0 +1,22 @@
+name: Docker Image CI
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - uses: actions/setup-node@v4
+
+    - run: npm install
+    - run: npm run build
+    
+    - name: Build the Docker image
+      run: docker build . --file Dockerfile --tag varhub-web-server:$(date +%s)
