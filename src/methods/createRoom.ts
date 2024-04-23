@@ -31,7 +31,7 @@ const apiMap = {
 			"240.0.0.0/4", // Internet. Reserved for future use
 			"255.255.255.255/32", // Subnet. Reserved for the "limited broadcast" destination address
 		],
-		fetchAllowIp: false,
+		fetchAllowIp: true,
 		domainBlacklist: ['localhost', /\.local$/],
 		domainWhitelist: [/\./],
 		fetchMaxContentLength:  100 /* 100 kB */ * 1000,
