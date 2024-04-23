@@ -34,7 +34,7 @@ const apiMap = {
 		fetchAllowIp: true,
 		domainBlacklist: ['localhost', /\.local$/],
 		domainWhitelist: [/\./],
-		fetchMaxContentLength:  100 /* 100 kB */ * 1000,
+		// fetchMaxContentLength:  100 /* 100 kB */ * 1000,
 		fetchHeaders: {
 			"user-agent": "Mozilla/5.0 (compatible; VARHUB-API/1.0)",
 		}
