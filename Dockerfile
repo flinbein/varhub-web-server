@@ -4,7 +4,4 @@ COPY package*.json ./
 COPY dist ./dist
 COPY node_modules ./node_modules
 EXPOSE 80
-#RUN ["npm", "install"]
-#RUN ["npm", "upgrade"]
-#RUN ["npm", "run", "build"]
 ENTRYPOINT [ "npm", "start", "--", "--port", "80" ]

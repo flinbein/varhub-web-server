@@ -16,7 +16,7 @@ const port = Number(argv.port ?? 8088);
 const varhub = new Hub();
 const fastify = Fastify();
 
-await fastify.register(cors); // enable cors
+await fastify.register(cors); // allow cors
 await fastify.register(fastifyWebSocket); // enable websockets
 
 
