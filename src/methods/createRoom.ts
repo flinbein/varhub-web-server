@@ -2,7 +2,7 @@ import { type Hub, Room, TimeoutDestroyController, ApiHelperController } from "@
 import createNetworkApi from "@flinbein/varhub-api-network";
 import jsonHash from "@flinbein/json-stable-hash"
 import { QuickJSController } from "@flinbein/varhub-controller-quickjs";
-import { getQuickJS } from "quickjs-emscripten"
+import { getQuickJS, newQuickJSAsyncWASMModule } from "quickjs-emscripten"
 import type {JsonSchemaToTsProvider} from "@fastify/type-provider-json-schema-to-ts";
 import type { FastifyPluginCallback } from "fastify";
 
@@ -56,6 +56,7 @@ const bodySchema = {
 			required: ["source", "main"],
 			additionalProperties: false,
 		},
+		async: {type: "boolean"},
 		config: true,
 		message: {type: "string"},
 		additionalProperties: false,
@@ -65,11 +66,12 @@ const bodySchema = {
 
 export const createRoom = (varhub: Hub): FastifyPluginCallback => async (fastify) => {
 	const quickJS = await getQuickJS();
+	const quickJSAsync = await newQuickJSAsyncWASMModule();
 	
 	fastify.withTypeProvider<JsonSchemaToTsProvider>().post(
 		'/room',
 		{schema: {body: bodySchema}},
-		(request, reply) => {
+		async (request, reply) => {
 			reply.type("application/json");
 			
 			const userAgentHeader = request.headers["user-agent"];
@@ -99,13 +101,23 @@ export const createRoom = (varhub: Hub): FastifyPluginCallback => async (fastify
 			}
 			
 			new TimeoutDestroyController(room, 1000 * 60 * 2 /* 2 min */);
-			const apiHelperController = new ApiHelperController(room, apiMap)
-			new QuickJSController(room, quickJS, moduleParam, {config, apiHelperController})
-				.on("console", (level, ...args) => {
-					console.log("%s",`[Room ${roomId}] ${level}:`, ...args);
-				})
-				.start()
-			;
+			const apiHelperController = new ApiHelperController(room, apiMap);
+			if (request.body.async) {
+				await new QuickJSController(room, quickJSAsync, moduleParam, {config, apiHelperController})
+					.on("console", (level, ...args) => {
+						console.log("%s",`[Room ${roomId}] ${level}:`, ...args);
+					})
+					.startAsync()
+				;
+			} else {
+				new QuickJSController(room, quickJS, moduleParam, {config, apiHelperController})
+					.on("console", (level, ...args) => {
+						console.log("%s",`[Room ${roomId}] ${level}:`, ...args);
+					})
+					.start()
+				;
+			}
+			
 			return reply.code(200).send({id: roomId, integrity: integrity ?? null, message: room.publicMessage});
 		}
 	);
