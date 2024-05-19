@@ -2,9 +2,12 @@ import { type Hub, Room, TimeoutDestroyController, ApiHelperController } from "@
 import createNetworkApi from "@flinbein/varhub-api-network";
 import jsonHash from "@flinbein/json-stable-hash"
 import { QuickJSController } from "@flinbein/varhub-controller-quickjs";
-import { getQuickJS, newQuickJSAsyncWASMModule } from "quickjs-emscripten"
+import { newQuickJSWASMModuleFromVariant, newQuickJSAsyncWASMModuleFromVariant } from "quickjs-emscripten";
+import quickJsSyncVariant from "@jitl/quickjs-ng-wasmfile-release-sync"
+import quickJsAsyncVariant from "@jitl/quickjs-ng-wasmfile-release-asyncify"
 import type {JsonSchemaToTsProvider} from "@fastify/type-provider-json-schema-to-ts";
 import type { FastifyPluginCallback } from "fastify";
+import { Logger } from "../Logger.js";
 
 
 const apiMap = {
@@ -57,6 +60,7 @@ const bodySchema = {
 			additionalProperties: false,
 		},
 		async: {type: "boolean"},
+		logger: {type: "string"},
 		config: true,
 		message: {type: "string"},
 		additionalProperties: false,
@@ -64,12 +68,20 @@ const bodySchema = {
 	required: ["module"]
 } as const;
 
-export const createRoom = (varhub: Hub): FastifyPluginCallback => async (fastify) => {
-	const quickJS = await getQuickJS();
-	const quickJSAsync = await newQuickJSAsyncWASMModule();
+export const createQuickJSRoom = (varhub: Hub, loggers: Map<string, Logger>): FastifyPluginCallback => async (fastify) => {
+	const quickJS = await newQuickJSWASMModuleFromVariant(quickJsSyncVariant as any);
+	const quickJSAsync = await newQuickJSAsyncWASMModuleFromVariant(quickJsAsyncVariant as any);
 	
 	fastify.withTypeProvider<JsonSchemaToTsProvider>().post(
 		'/room',
+		{schema: {body: bodySchema}},
+		async (request, reply) => {
+			return reply.redirect(308, "/room/qjs");
+		}
+	)
+	
+	fastify.withTypeProvider<JsonSchemaToTsProvider>().post(
+		'/room/qjs',
 		{schema: {body: bodySchema}},
 		async (request, reply) => {
 			reply.type("application/json");
@@ -102,21 +114,19 @@ export const createRoom = (varhub: Hub): FastifyPluginCallback => async (fastify
 			
 			new TimeoutDestroyController(room, 1000 * 60 * 2 /* 2 min */);
 			const apiHelperController = new ApiHelperController(room, apiMap);
-			if (request.body.async) {
-				await new QuickJSController(room, quickJSAsync, moduleParam, {config, apiHelperController})
-					.on("console", (level, ...args) => {
-						console.log("%s",`[Room ${roomId}] ${level}:`, ...args);
-					})
-					.startAsync()
-				;
-			} else {
-				new QuickJSController(room, quickJS, moduleParam, {config, apiHelperController})
-					.on("console", (level, ...args) => {
-						console.log("%s",`[Room ${roomId}] ${level}:`, ...args);
-					})
-					.start()
-				;
+			
+			const logger = request.body.logger ? loggers.get(request.body.logger) : undefined;
+			const quickJsUsed = request.body.async ? quickJSAsync : quickJS;
+			const ctrl = new QuickJSController(room, quickJsUsed, moduleParam, {config, apiHelperController});
+			if (logger) {
+				logger.handleRoom(roomId!, room);
+				logger.handleQuickJS(roomId!, ctrl);
 			}
+			ctrl.on("console", (level, ...args) => {
+				console.log("%s",`[Room ${roomId}] ${level}:`, ...args);
+			})
+			if (request.body.async) await ctrl.startAsync();
+			else ctrl.start();
 			
 			return reply.code(200).send({id: roomId, integrity: integrity ?? null, message: room.publicMessage});
 		}
