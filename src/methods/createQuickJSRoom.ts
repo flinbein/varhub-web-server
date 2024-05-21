@@ -122,9 +122,6 @@ export const createQuickJSRoom = (varhub: Hub, loggers: Map<string, Logger>): Fa
 				logger.handleRoom(roomId!, room);
 				logger.handleQuickJS(roomId!, ctrl);
 			}
-			ctrl.on("console", (level, ...args) => {
-				console.log("%s",`[Room ${roomId}] ${level}:`, ...args);
-			})
 			if (request.body.async) await ctrl.startAsync();
 			else ctrl.start();
 			

@@ -13,6 +13,8 @@ import { registerLogger } from "./methods/registerLogger.js";
 import { Logger } from "./Logger.js";
 import { createClientRoom } from "./methods/createClientRoom.js";
 
+process.on("uncaughtException", () => {});
+
 const argv = await yargs(hideBin(process.argv)).argv;
 const port = Number(argv.port ?? 8088);
 
