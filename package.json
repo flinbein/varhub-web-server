@@ -1,6 +1,6 @@
 {
   "name": "@flinbein/varhub-web-server",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "node": ">=20.0.0",
   "type": "module",
   "main": "./dist/index.js",
@@ -18,7 +18,7 @@
     "@flinbein/json-stable-hash": "git+https://github.com/flinbein/json-stable-hash#1.0.4",
     "@flinbein/varhub": "git+https://github.com/flinbein/varhub#1.4.0",
     "@flinbein/varhub-api-network": "git+https://github.com/flinbein/varhub-api-network#1.0.3",
-    "@flinbein/varhub-controller-quickjs": "git+https://github.com/flinbein/varhub-controller-quickjs#1.4.2",
+    "@flinbein/varhub-controller-quickjs": "git+https://github.com/flinbein/varhub-controller-quickjs#1.5.2",
     "@flinbein/xjmapper": "git+https://github.com/flinbein/xjmapper#1.0.2",
     "fastify": "^4.26.2",
     "yargs": "^17.7.2"

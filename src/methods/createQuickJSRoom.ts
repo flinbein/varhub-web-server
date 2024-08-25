@@ -76,7 +76,7 @@ export const createQuickJSRoom = (varhub: Hub, loggers: Map<string, Logger>): Fa
 		'/room',
 		{schema: {body: bodySchema}},
 		async (request, reply) => {
-			return reply.redirect(308, "/room/qjs");
+			return reply.redirect( "/room/qjs", 308);
 		}
 	)
 	
