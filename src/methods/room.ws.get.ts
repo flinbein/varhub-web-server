@@ -3,32 +3,23 @@ import type {JsonSchemaToTsProvider} from "@fastify/type-provider-json-schema-to
 import type { FastifyPluginCallback } from "fastify/types/plugin.js";
 import {parse, serialize} from "@flinbein/xjmapper";
 
-
 const querySchema = {
 	type: 'object',
 	properties: {
-		integrity: {type: 'string'}
-	}
-} as const;
-
-const paramsSchema = {
-	type: 'object',
-	properties: {
-		roomId: {type: 'string'},
-		raw: {type: 'boolean'}
+		integrity: {type: 'string', pattern: "^custom:.*"},
+		message: {type: 'string'},
 	},
-	required: ["roomId"],
 	additionalProperties: false
 } as const;
 
-export const createClientRoom = (varhub: Hub): FastifyPluginCallback => async (fastify) => {
+export const roomWsGet = (varhub: Hub): FastifyPluginCallback => async (fastify) => {
 	fastify.withTypeProvider<JsonSchemaToTsProvider>().get(
-		'/room/client',
-		{websocket: true, schema: {querystring: querySchema, params: paramsSchema}},
-		(websocket, {params, query}) => {
+		'/room/ws',
+		{websocket: true, schema: {querystring: querySchema}},
+		(websocket, {query}) => {
 			const room = new Room();
-			const integrity = query.integrity ? `client-${query.integrity}` : undefined;
-			const roomId = varhub.addRoom(room, integrity);
+			if (typeof query.message === "string") room.publicMessage = query.message;
+			const roomId = varhub.addRoom(room, query.integrity ?? undefined);
 			if (roomId === null) {
 				return websocket.close(4000, JSON.stringify({
 					type: 'ConnectionClosed',
@@ -47,7 +38,7 @@ export const createClientRoom = (varhub: Hub): FastifyPluginCallback => async (f
 			room.on("destroy", () => {
 				websocket.close(4000, JSON.stringify({
 					type: 'ConnectionClosed',
-					message: `can not create room`
+					message: `room destroyed`
 				}));
 			});
 			
@@ -69,8 +60,10 @@ export const createClientRoom = (varhub: Hub): FastifyPluginCallback => async (f
 					}
 				}
 				if (cmd === "kick") {
-					for (let c of findAllConnections(args.map((v) => Number(v)))) {
-						room.kick(c)
+					const [idArg, message] = args;
+					const idArgList = Array.isArray(idArg) ? idArg : [idArg];
+					for (let c of findAllConnections(idArgList.map((v) => Number(v)))) {
+						room.kick(c, message == null ? message : String(message))
 					}
 				}
 				if (cmd === "publicMessage") {
@@ -82,19 +75,20 @@ export const createClientRoom = (varhub: Hub): FastifyPluginCallback => async (f
 				if (cmd === "send") {
 					const [idArg, ...sendArgs] = args;
 					const idArgList = Array.isArray(idArg) ? idArg : [idArg];
-					for (let c of findJoinedConnections(idArgList.map((v) => Number(v)))) {
-						c.sendEvent(...sendArgs);
+					for (let con of findJoinedConnections(idArgList.map((v) => Number(v)))) {
+						con.sendEvent(...sendArgs);
 					}
 				}
 				if (cmd === "broadcast") {
 					const [...sendArgs] = args;
-					for (let c of room.getJoinedConnections()) {
-						c.sendEvent(...sendArgs);
+					for (let con of room.getJoinedConnections()) {
+						con.sendEvent(...sendArgs);
 					}
 				}
 				
 			});
 			websocket.on("close", () => room.destroy());
+			sender("init")(roomId, room.publicMessage, varhub.getRoomIntegrity(roomId));
 		}
 	);
 }

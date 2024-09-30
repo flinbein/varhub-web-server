@@ -1,44 +1,53 @@
-import type { WebSocket } from "ws";
+import type { WebSocket, RawData } from "ws";
 import type { Room, Connection } from "@flinbein/varhub";
 import type { QuickJSController } from "@flinbein/varhub-controller-quickjs";
-import { serialize, XJData } from "@flinbein/xjmapper";
+import { serialize } from "@flinbein/xjmapper";
 
 export class Logger {
-	constructor(private ws: WebSocket) {
-		ws.binaryType = "arraybuffer";
+	#websocket: WebSocket
+	
+	constructor(ws: WebSocket) {
+		this.#websocket = ws;
+		ws.pause();
+	}
+	
+	get websocket(){
+		return this.#websocket;
 	}
 	
 	log(roomId: string, type: string, ...data: any[]){
-		if (this.ws.readyState !== 1) return;
+		if (this.#websocket.readyState !== 1) return;
 		try {
 			const binaryData = serialize(roomId, type, ...data);
-			this.ws.send(binaryData);
+			this.#websocket.send(binaryData);
 		} catch (error) {
 			const binaryData = serialize(roomId, "error", type);
-			this.ws.send(binaryData);
+			this.#websocket.send(binaryData);
 		}
 	}
 	
 	handleRoom(roomId: string, room: Room){
-		if (this.ws.readyState !== 1) return;
+		this.#websocket.isPaused && this.#websocket.resume();
+		if (this.#websocket.readyState !== 1) return;
 		for (let e of ["connectionJoin", "connectionClosed", "connectionEnter", "connectionMessage"] as const) {
 			const logConnection = (c: Connection, ...args: any[]) => this.log(roomId, "room", e, c.id, ...args);
 			room.on(e, logConnection);
-			this.ws.on("close", () => room.off(e, logConnection));
-			this.ws.on("error", () => room.off(e, logConnection));
+			this.#websocket.on("close", () => room.off(e, logConnection));
+			this.#websocket.on("error", () => room.off(e, logConnection));
 		}
 		for (let e of ["messageChange", "destroy"] as const) {
 			const logData = (...args: any[]) => this.log(roomId, "room", e, ...args);
 			room.on(e, logData);
-			this.ws.on("close", () => room.off(e, logData));
-			this.ws.on("error", () => room.off(e, logData));
+			this.#websocket.on("close", () => room.off(e, logData));
+			this.#websocket.on("error", () => room.off(e, logData));
 		}
 	}
 	
 	handleQuickJS(roomId: string, quickJsController: QuickJSController){
+		this.#websocket.isPaused && this.#websocket.resume();
 		const logger = this.log.bind(this, roomId, "quickjs", "console");
 		quickJsController.on("console", this.log.bind(this, roomId, "quickjs", "console"));
-		this.ws.on("close", () => quickJsController.off("console", logger));
-		this.ws.on("error", () => quickJsController.off("console", logger));
+		this.#websocket.on("close", () => quickJsController.off("console", logger));
+		this.#websocket.on("error", () => quickJsController.off("console", logger));
 	}
 }

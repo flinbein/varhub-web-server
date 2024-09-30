@@ -1,35 +1,39 @@
 {
   "name": "@flinbein/varhub-web-server",
-  "version": "1.2.3",
+  "version": "1.3.0",
   "node": ">=20.0.0",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "scripts": {
     "build": "tsc",
-    "start": "node ./dist/index.js"
+    "start": "node ./dist/index.js",
+    "test": "node --experimental-websocket --import=./test/register.js --test --test-reporter spec ./test/**/*.test.ts"
   },
   "dependencies": {
-    "@fastify/cors": "^9.0.1",
-    "quickjs-emscripten": "^0.29.1",
-    "@jitl/quickjs-ng-wasmfile-release-sync": "^0.29.1",
-    "@jitl/quickjs-ng-wasmfile-release-asyncify": "^0.29.1",
-    "@fastify/websocket": "^10.0.1",
+    "@fastify/cors": "^10.0.1",
+    "@fastify/request-context": "^6.0.1",
+    "@fastify/websocket": "^11.0.1",
     "@flinbein/json-stable-hash": "git+https://github.com/flinbein/json-stable-hash#1.0.4",
     "@flinbein/varhub": "git+https://github.com/flinbein/varhub#1.4.0",
-    "@flinbein/varhub-api-network": "git+https://github.com/flinbein/varhub-api-network#1.0.3",
-    "@flinbein/varhub-controller-quickjs": "git+https://github.com/flinbein/varhub-controller-quickjs#1.5.2",
+    "@flinbein/varhub-api-network": "git+https://github.com/flinbein/varhub-api-network#1.1.0",
+    "@flinbein/varhub-controller-isolated-vm": "git+https://github.com/flinbein/varhub-controller-isolated-vm#0.1.5",
+    "@flinbein/varhub-controller-quickjs": "git+https://github.com/flinbein/varhub-controller-quickjs#1.5.3",
     "@flinbein/xjmapper": "git+https://github.com/flinbein/xjmapper#1.0.2",
-    "fastify": "^4.26.2",
+    "@jitl/quickjs-ng-wasmfile-release-asyncify": "^0.31.0",
+    "@jitl/quickjs-ng-wasmfile-release-sync": "^0.31.0",
+    "fastify": "^5.0.0",
+    "quickjs-emscripten": "^0.31.0",
     "yargs": "^17.7.2"
   },
   "devDependencies": {
-    "@fastify/type-provider-json-schema-to-ts": "^3.0.0",
+    "@fastify/type-provider-json-schema-to-ts": "^4.0.0",
     "@types/netmask": "^2.0.5",
-    "@types/node": "^20.12.7",
-    "@types/ws": "^8.5.10",
-    "@types/yargs": "^17.0.32",
-    "typescript": "^5.4.5"
+    "@types/node": "^22.5.5",
+    "@types/ws": "^8.5.12",
+    "@types/yargs": "^17.0.33",
+    "typescript": "^5.6.2",
+    "ts-node": "^10.9.2"
   },
   "run": "node ./dist/index.js"
 }

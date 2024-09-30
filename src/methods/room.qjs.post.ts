@@ -1,5 +1,5 @@
 import { type Hub, Room, TimeoutDestroyController, ApiHelperController } from "@flinbein/varhub";
-import createNetworkApi from "@flinbein/varhub-api-network";
+import apiMap from "../api/index.js";
 import jsonHash from "@flinbein/json-stable-hash"
 import { QuickJSController } from "@flinbein/varhub-controller-quickjs";
 import { newQuickJSWASMModuleFromVariant, newQuickJSAsyncWASMModuleFromVariant } from "quickjs-emscripten";
@@ -9,40 +9,6 @@ import type {JsonSchemaToTsProvider} from "@fastify/type-provider-json-schema-to
 import type { FastifyPluginCallback } from "fastify";
 import { Logger } from "../Logger.js";
 
-
-const apiMap = {
-	"network": createNetworkApi({
-		fetchPoolTimeout: 10_000, // 10s
-		fetchPoolCount: 10,
-		fetchMaxActiveCount: 5,
-		ipBlacklist: [
-			"0.0.0.0/8", // Software
-			"10.0.0.0/8", // Private network
-			"100.64.0.0/10", // Private network
-			"127.0.0.0/8", // Host
-			"169.254.0.0/16", // Subnet
-			"172.16.0.0/12", // Private network
-			"192.0.0.0/24", // Private network
-			"192.0.2.0/24", // Documentation
-			"192.88.99.0/24", // Internet. Formerly used for IPv6 to IPv4 relay
-			"192.168.0.0/16", // Private network
-			"198.18.0.0/15", // Private network
-			"198.51.100.0/24", // Documentation
-			"203.0.113.0/24", // Documentation
-			"224.0.0.0/4", // Internet. In use for multicast
-			"233.252.0.0/24", // Documentation
-			"240.0.0.0/4", // Internet. Reserved for future use
-			"255.255.255.255/32", // Subnet. Reserved for the "limited broadcast" destination address
-		],
-		fetchAllowIp: true,
-		domainBlacklist: ['localhost', /\.local$/],
-		domainWhitelist: [/\./],
-		// fetchMaxContentLength:  100 /* 100 kB */ * 1000,
-		fetchHeaders: {
-			"user-agent": "Mozilla/5.0 (compatible; VARHUB-API/1.0)",
-		}
-	})
-}
 
 const bodySchema = {
 	type: 'object',
@@ -68,7 +34,7 @@ const bodySchema = {
 	required: ["module"]
 } as const;
 
-export const createQuickJSRoom = (varhub: Hub, loggers: Map<string, Logger>): FastifyPluginCallback => async (fastify) => {
+export const roomQjsPost = (varhub: Hub, loggers: Map<string, Logger>): FastifyPluginCallback => async (fastify) => {
 	const quickJS = await newQuickJSWASMModuleFromVariant(quickJsSyncVariant as any);
 	const quickJSAsync = await newQuickJSAsyncWASMModuleFromVariant(quickJsAsyncVariant as any);
 	
@@ -85,14 +51,6 @@ export const createQuickJSRoom = (varhub: Hub, loggers: Map<string, Logger>): Fa
 		{schema: {body: bodySchema}},
 		async (request, reply) => {
 			reply.type("application/json");
-			
-			const userAgentHeader = request.headers["user-agent"];
-			if (userAgentHeader?.includes("VARHUB-API")) {
-				return reply.code(403).send({
-					type: "forbidden",
-					message: `forbidden for user-agent: ${userAgentHeader}`,
-				});
-			}
 			
 			const userIntegrity = request.body.integrity;
 			const moduleParam = request.body.module;
@@ -117,7 +75,7 @@ export const createQuickJSRoom = (varhub: Hub, loggers: Map<string, Logger>): Fa
 			
 			const logger = request.body.logger ? loggers.get(request.body.logger) : undefined;
 			const quickJsUsed = request.body.async ? quickJSAsync : quickJS;
-			const ctrl = new QuickJSController(room, quickJsUsed, moduleParam, {config, apiHelperController});
+			const ctrl = new QuickJSController(room, quickJsUsed as any, moduleParam, {config, apiHelperController});
 			if (logger) {
 				logger.handleRoom(roomId!, room);
 				logger.handleQuickJS(roomId!, ctrl);

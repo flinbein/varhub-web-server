@@ -11,7 +11,7 @@ const paramsSchema = {
 	required: ["integrity"]
 } as const;
 
-export const getRooms = (varhub: Hub): FastifyPluginCallback => async (fastify) => {
+export const roomsIntegrityGet = (varhub: Hub): FastifyPluginCallback => async (fastify) => {
 	fastify.withTypeProvider<JsonSchemaToTsProvider>().get(
 		'/rooms/:integrity',
 		{schema: {params: paramsSchema}},

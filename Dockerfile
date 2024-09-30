@@ -4,4 +4,4 @@ COPY package*.json ./
 COPY dist ./dist
 COPY node_modules ./node_modules
 EXPOSE 80
-ENTRYPOINT [ "npm", "start", "--", "--port", "80" ]
+ENTRYPOINT [ "npm", "start", "--", "--port", "80", "--host", "0.0.0.0", "--ivmInspect", "true" ]
