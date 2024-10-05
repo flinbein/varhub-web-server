@@ -65,7 +65,7 @@ describe("ivm", {timeout: 30000}, () => {
 		await new Promise(r => setTimeout(r, 50));
 		
 		const responseJson = await fastify.injectPost("/room/ivm", {
-			inspector: "test-inspector-ivm-id",
+			inspect: "test-inspector-ivm-id",
 			message: 'open',
 			module: {
 				main: "index.js",
@@ -96,7 +96,7 @@ describe("ivm", {timeout: 30000}, () => {
 		await using fastify = await createServer();
 		
 		const responseJson = await fastify.injectPost("/room/ivm", {
-			inspector: true,
+			inspect: true,
 			message: 'open',
 			module: {
 				main: "index.js",
@@ -110,7 +110,7 @@ describe("ivm", {timeout: 30000}, () => {
 				},
 			},
 		});
-		const inspectorWsUrl = `/room/${responseJson.id}/inspect/${responseJson.inspectorKey}`
+		const inspectorWsUrl = `/room/${responseJson.id}/inspect/${responseJson.inspect}`
 		using inspectorWs = await fastify.injectWebsocket(inspectorWsUrl).joinPromise;
 		const contextMap = inspectorWs.inspectorCreateContextMap();
 		void inspectorWs.inspectorCall("Runtime.enable", {});

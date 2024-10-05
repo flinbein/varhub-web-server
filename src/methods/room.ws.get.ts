@@ -80,9 +80,8 @@ export const roomWsGet = (varhub: Hub): FastifyPluginCallback => async (fastify)
 					}
 				}
 				if (cmd === "broadcast") {
-					const [...sendArgs] = args;
 					for (let con of room.getJoinedConnections()) {
-						con.sendEvent(...sendArgs);
+						con.sendEvent(...args);
 					}
 				}
 				

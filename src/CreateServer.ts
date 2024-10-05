@@ -17,6 +17,7 @@ declare module '@fastify/request-context' {
 		varhub: Hub,
 		loggers: Map<string, Logger>,
 		room?: Room
+		roomId?: string
 		connection?: Connection
 		flushEvents?: () => any[][]
 	}

@@ -8,9 +8,9 @@ const paramsSchema = {
 	type: 'object',
 	properties: {
 		roomId: {type: 'string'},
-		inspectorKey: {type: 'string'},
+		inspect: {type: 'string'},
 	},
-	required: ["roomId", "inspectorKey"],
+	required: ["roomId", "inspect"],
 	additionalProperties: false
 } as const;
 
@@ -19,12 +19,12 @@ export const roomIdInspectKey = (varhub: Hub): FastifyPluginCallback => async (f
 	fastify.withTypeProvider<JsonSchemaToTsProvider>().route({
 		method: 'GET',
 		schema: {params: paramsSchema},
-		url: '/room/:roomId/inspect/:inspectorKey',
+		url: '/room/:roomId/inspect/:inspect',
 		async preHandler(request, reply) {
 			const {params, query} = request;
 			const room = varhub.getRoom(params.roomId);
-			const inspectorKey: string = (room as any)[Symbol.for("varhub:inspector_key")] ?? "";
-			if (!room || !inspectorKey || !timingSafeEqual(Buffer.from(inspectorKey), Buffer.from(params.inspectorKey))) {
+			const inspect: string = (room as any)[Symbol.for("varhub:inspect_key")] ?? "";
+			if (!room || !inspect || !timingSafeEqual(Buffer.from(inspect), Buffer.from(params.inspect))) {
 				throw reply.type("application/json").code(404).send({
 					type: 'NotFound',
 					message: `Room not found OR not wrong inspector key`

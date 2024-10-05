@@ -22,7 +22,7 @@ const bodySchema = {
 			required: ["source", "main"],
 			additionalProperties: false,
 		},
-		inspector: {
+		inspect: {
 			anyOf: [{ type: 'boolean' }, { type: 'string' }],
 		},
 		config: true,
@@ -42,7 +42,7 @@ export const roomIvmPost = (
 		{schema: {body: bodySchema}},
 		async (request, reply) => {
 			reply.type("application/json");
-			const inspectorValue = request.body.inspector;
+			const inspectorValue = request.body.inspect;
 			if (inspectorValue && !controllerConfig.inspect) {
 				return reply.code(405).send({
 					type: "Error",
@@ -79,7 +79,7 @@ export const roomIvmPost = (
 			
 			if (inspectorValue) {
 				(room as any)[Symbol.for("varhub:ivm")] = ctrl;
-				(room as any)[Symbol.for("varhub:inspector_key")] = randomUUID({});
+				(room as any)[Symbol.for("varhub:inspect_key")] = randomUUID({});
 				if (typeof inspectorValue === "string") {
 					const logger = loggers.get(inspectorValue);
 					const websocket = logger?.websocket;
@@ -111,8 +111,8 @@ export const roomIvmPost = (
 			return reply.code(200).send({
 				id: roomId,
 				integrity: integrity ?? null,
-				message: room.publicMessage,
-				inspectorKey: (room as any)[Symbol.for("varhub:inspector_key")] ?? undefined
+				message: room.publicMessage ?? null,
+				inspect: (room as any)[Symbol.for("varhub:inspect_key")] ?? null
 			});
 		}
 	);

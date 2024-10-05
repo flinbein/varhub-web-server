@@ -116,7 +116,7 @@ describe("qjs", {timeout: 30000}, () => {
 	});
 
 	it("send", {timeout: 1000}, async () => {
-			await using fastify = await createServer();
+		await using fastify = await createServer();
 		using roomWs = fastify.injectWebsocket("/room/ws")
 		const roomHandler = new RoomHandler(roomWs);
 		roomHandler.on("connectionEnter", (id) => {

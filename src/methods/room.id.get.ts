@@ -47,7 +47,7 @@ export const roomIdGet = (varhub: Hub): FastifyPluginCallback => async (fastify)
 			// WS CONNECTION
 			let roomParams = undefined;
 			try {
-				if (query.params) roomParams = [...JSON.parse(query.params)];
+				if (query.params) roomParams = [...JSON.parse(query.params ?? [])];
 			} catch (error) {
 				return reply.type("application/json").code(400).send({
 					type: 'Format',
