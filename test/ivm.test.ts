@@ -15,7 +15,7 @@ describe("ivm", {timeout: 30000}, () => {
 					["index.js"]: /* language=javascript */ `
 								let counter = 100;
 								export function test(){
-									return [this.player, counter++]
+									return [this.parameters[0], counter++]
 								}
 							`
 				},

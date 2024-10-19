@@ -90,13 +90,14 @@ export const createServer = async (
 let rpcId = 10_000;
 async function rpcCall(ws: WebSocket, method: string, ...args: any[]) {
 	const id = rpcId++;
-	const outMessage = serialize("$rpc", id, method, ...args);
+	const outMessage = serialize("$rpc", undefined, 0, id, [method], args);
 	return new Promise((resolve, reject) => {
 		const onMessage = (data: any) => {
 			const inMessage = parse(data as any);
 			if (!Array.isArray(inMessage) || inMessage.length < 3) return;
-			const [resultKey, inId, inCode, inResult = undefined] = inMessage;
-			if (resultKey !== "$rpcResult") return;
+			const [resultKey, _channelId, inCode, inId, inResult = undefined] = inMessage;
+			if (resultKey !== "$rpc") return;
+			if (_channelId !== undefined) return;
 			if (inId !== id) return;
 			clear(inCode === 0 ? resolve : reject, inResult);
 		}
@@ -155,9 +156,11 @@ async function inspectorWaitMethod(ws: WebSocket, method: string, filter: (arg: 
 async function rpcWaitEvent(ws: WebSocket, filter: (...arg: any) => any = () => true) {
 	return new Promise((resolve, reject) => {
 		const onMessage = (data: any) => {
-			const [eventKey, ...inData] = parse(data as any);
-			if (eventKey !== "$rpcEvent") return;
-			if (!filter(...inData)) return;
+			const [rpcKey, channelId, operationCode, path, inData] = parse(data as any);
+			if (rpcKey !== "$rpc") return;
+			if (channelId !== undefined) return;
+			if (operationCode !== 4) return;
+			if (!filter(...path as any)) return;
 			clear(resolve, inData);
 		}
 		const onClose = (msg: any) => clear(reject, msg);

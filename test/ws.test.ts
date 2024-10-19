@@ -30,11 +30,11 @@ class RoomHandler extends EventEmitter<any> {
 	}
 	
 	#sendResponse(conId: number|number[], callId: any, error: boolean, result: any){
-		this.ws.send(serialize("send", conId, "$rpcResult", callId, error ? 1 : 0, result));
+		this.ws.send(serialize("send", conId, "$rpc", undefined, error ? 3 : 0, callId, result));
 	}
 	
-	send(conId: number|number[], ...data: any){
-		this.ws.send(serialize("send", conId, "$rpcEvent", ...data));
+	send(conId: number|number[], path: any[], msg: any[]){
+		this.ws.send(serialize("send", conId, "$rpc", undefined, 4,  path, msg));
 	}
 	
 	["msg:messageChange"](msg: string){
@@ -64,10 +64,11 @@ class RoomHandler extends EventEmitter<any> {
 	
 	async ["msg:connectionMessage"](conId: number, ...args: any[]){
 		if (args[0] !== "$rpc") return;
-		const [, callId, method, ...callArgs] = args;
+		const [_key, _channelId, _operationId, callId, methodPath, callArgs] = args;
 		try {
-			const fn = this.methods[method] as (...args: any[]) => any;
-			const result = await fn.call({connection: conId}, ...callArgs);
+			let target: any = this.methods;
+			for (const m of methodPath) target = target[m];
+			const result = await target.call({connection: conId}, ...callArgs);
 			this.#sendResponse(conId, callId, false, result);
 		} catch (error) {
 			this.#sendResponse(conId, callId, true, error);
@@ -90,13 +91,13 @@ class RoomHandler extends EventEmitter<any> {
 		this.ws.send(serialize("destroy"));
 	}
 	
-	broadcast(...msg: any[]) {
-		this.ws.send(serialize("broadcast", "$rpcEvent", ...msg));
+	broadcast(path: any[], msg: any[]) {
+		this.ws.send(serialize("broadcast", "$rpc", undefined, 4, path, msg));
 	}
 }
 
 
-describe("qjs", {timeout: 30000}, () => {
+describe("ws", {timeout: 30000}, () => {
 	it("method and join", {timeout: 1000}, async () => {
 		await using fastify = await createServer();
 		using roomWs = fastify.injectWebsocket("/room/ws")
@@ -109,7 +110,7 @@ describe("qjs", {timeout: 30000}, () => {
 			roomHandler.join(id);
 		})
 		await roomHandler.init;
-
+		
 		using ws = fastify.injectWebsocket(`/room/${roomHandler.roomId}`);
 		await ws.joinPromise;
 		assert.equal(await ws.rpcCall("me", 55), 1055);
@@ -121,14 +122,14 @@ describe("qjs", {timeout: 30000}, () => {
 		const roomHandler = new RoomHandler(roomWs);
 		roomHandler.on("connectionEnter", (id) => {
 			roomHandler.join(id);
-			roomHandler.send(id, "msg", "hello world");
+			roomHandler.send(id, ["msg"], ["hello world"]);
 		});
 		await roomHandler.init;
 
 		using ws = fastify.injectWebsocket(`/room/${roomHandler.roomId}`);
-		const eventPromise = ws.rpcWaitEvent((e) => e === "msg");
+		const eventPromise = ws.rpcWaitEvent((e: any) => e === "msg");
 		await ws.joinPromise;
-		assert.deepEqual(await eventPromise, ["msg", "hello world"]);
+		assert.deepEqual(await eventPromise, ["hello world"]);
 	});
 
 	it("kick on enter", {timeout: 1000}, async () => {
@@ -218,7 +219,7 @@ describe("qjs", {timeout: 30000}, () => {
 		using ws = fastify.injectWebsocket(`/room/${roomHandler.roomId}`);
 		const broadcastPromise = ws.rpcWaitEvent((val) => val === "msg")
 		await ws.joinPromise;
-		roomHandler.broadcast("msg", "hello");
-		assert.deepEqual(await broadcastPromise, ["msg", "hello"]);
+		roomHandler.broadcast(["msg"], ["hello"]);
+		assert.deepEqual(await broadcastPromise, ["hello"]);
 	});
 });
