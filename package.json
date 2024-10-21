@@ -1,6 +1,6 @@
 {
   "name": "@flinbein/varhub-web-server",
-  "version": "1.4.3",
+  "version": "1.4.4",
   "node": ">=20.0.0",
   "type": "module",
   "main": "./dist/index.js",
