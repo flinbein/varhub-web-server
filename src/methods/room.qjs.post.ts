@@ -65,7 +65,6 @@ export const roomQjsPost = (varhub: Hub, loggers: Map<string, Logger>): FastifyP
 			
 			const room = new Room();
 			const config = request.body.config ?? undefined;
-			const roomId = varhub.addRoom(room, integrity);
 			if (typeof request.body.message === "string" ) {
 				room.publicMessage = request.body.message;
 			}
@@ -76,6 +75,8 @@ export const roomQjsPost = (varhub: Hub, loggers: Map<string, Logger>): FastifyP
 			const logger = request.body.logger ? loggers.get(request.body.logger) : undefined;
 			const quickJsUsed = request.body.async ? quickJSAsync : quickJS;
 			const ctrl = new QuickJSController(room, quickJsUsed as any, moduleParam, {config, apiHelperController});
+			ctrl.on("dispose", () => room.destroy());
+			const roomId = varhub.addRoom(room, integrity);
 			if (logger) {
 				logger.handleRoom(roomId!, room);
 				logger.handleQuickJS(roomId!, ctrl);

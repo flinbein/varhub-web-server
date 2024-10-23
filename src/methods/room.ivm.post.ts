@@ -62,7 +62,6 @@ export const roomIvmPost = (
 			
 			const room = new Room();
 			const config = request.body.config ?? undefined;
-			const roomId = varhub.addRoom(room, integrity);
 			if (typeof request.body.message === "string" ) {
 				room.publicMessage = request.body.message;
 			}
@@ -76,6 +75,7 @@ export const roomIvmPost = (
 				inspector: Boolean(inspectorValue),
 				memoryLimitMb: 64,
 			});
+			ctrl.on("dispose", () => room.destroy())
 			
 			if (inspectorValue) {
 				(room as any)[Symbol.for("varhub:ivm")] = ctrl;
@@ -108,6 +108,7 @@ export const roomIvmPost = (
 			}
 			
 			await ctrl.startAsync();
+			const roomId = varhub.addRoom(room, integrity);
 			return reply.code(200).send({
 				id: roomId,
 				integrity: integrity ?? null,
