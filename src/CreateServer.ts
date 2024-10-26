@@ -1,16 +1,18 @@
 import { Hub, type Room, type Connection } from "@flinbein/varhub";
-import Fastify, { FastifyPluginCallback } from "fastify";
+import Fastify from "fastify";
+import { fastifyRequestContext } from '@fastify/request-context';
 import fastifyWebSocket from "@fastify/websocket";
 import cors from '@fastify/cors'
+
+import { Logger } from "./Logger.js";
 import { roomQjsPost } from "./methods/room.qjs.post.js";
 import { roomIvmPost } from "./methods/room.ivm.post.js";
 import { roomIdGet } from "./methods/room.id.get.js";
 import { roomsIntegrityGet } from "./methods/rooms.integrity.get.js";
 import { logIdGet } from "./methods/log.id.get.js";
 import { roomIdInspectKey } from "./methods/room.id.inspect.key.get.js";
-import { Logger } from "./Logger.js";
+import { baseGet } from "./methods/get.js";
 import { roomWsGet } from "./methods/room.ws.get.js";
-import { fastifyRequestContext } from '@fastify/request-context';
 
 declare module '@fastify/request-context' {
 	interface RequestContextData {
@@ -31,7 +33,8 @@ export default async function (
 		varhub?: Hub,
 		loggers?: Map<string, Logger>,
 		config?: ServerConfig,
-	} = {}) {
+	} = {}
+) {
 	const fastify = Fastify();
 	
 	await fastify.register(cors); // allow cors
@@ -50,6 +53,7 @@ export default async function (
 		}
 	})
 	
+	await fastify.register(baseGet(config)); // GET /
 	await fastify.register(roomQjsPost(varhub, loggers)); // POST /room, /room/quickjs
 	await fastify.register(roomIvmPost(varhub, loggers, config.ivm)); // POST /room/ivm
 	await fastify.register(roomWsGet(varhub)); // WS /room/client
