@@ -1,9 +1,26 @@
 import assert from "node:assert";
 import { WebSocket } from "ws";
 import { describe, it } from "node:test";
-import {createServer} from "./utils.js";
 import {parse, serialize} from "@flinbein/xjmapper";
 import EventEmitter = require("node:events");
+import {createServer} from "./utils.js";
+
+const enum ROOM_EVENT {
+	INIT = 0,
+	MESSAGE_CHANGE = 1,
+	CONNECTION_JOIN = 2,
+	CONNECTION_ENTER = 3,
+	CONNECTION_MESSAGE = 4,
+	CONNECTION_CLOSED = 5,
+}
+const enum ROOM_ACTION {
+	JOIN = 0,
+	KICK = 1,
+	PUBLIC_MESSAGE = 2,
+	DESTROY = 3,
+	SEND = 4,
+	BROADCAST = 5,
+}
 
 class RoomHandler extends EventEmitter<any> {
 	message: string|null = null;
@@ -30,39 +47,39 @@ class RoomHandler extends EventEmitter<any> {
 	}
 	
 	#sendResponse(conId: number|number[], callId: any, error: boolean, result: any){
-		this.ws.send(serialize("send", conId, "$rpc", undefined, error ? 3 : 0, callId, result));
+		this.ws.send(serialize(ROOM_ACTION.SEND, conId, "$rpc", undefined, error ? 3 : 0, callId, result));
 	}
 	
 	send(conId: number|number[], path: any[], msg: any[]){
-		this.ws.send(serialize("send", conId, "$rpc", undefined, 4,  path, msg));
+		this.ws.send(serialize(ROOM_ACTION.SEND, conId, "$rpc", undefined, 4,  path, msg));
 	}
 	
-	["msg:messageChange"](msg: string){
+	[`msg:${ROOM_EVENT.MESSAGE_CHANGE}`](msg: string){
 		this.message = msg
 	}
 	
-	["msg:connectionJoin"](conId: number){
+	[`msg:${ROOM_EVENT.CONNECTION_JOIN}`](conId: number){
 		this.lobbyConnections.add(conId);
 	}
 	
-	["msg:connectionEnter"](conId: number){
+	[`msg:${ROOM_EVENT.CONNECTION_ENTER}`](conId: number){
 		this.lobbyConnections.delete(conId);
 		this.onlineConnections.add(conId);
 	}
 	
-	["msg:connectionClosed"](conId: number) {
+	[`msg:${ROOM_EVENT.CONNECTION_CLOSED}`](conId: number) {
 		this.lobbyConnections.delete(conId);
 		this.onlineConnections.delete(conId);
 	}
 	
-	["msg:init"](roomId: string, publicMessage: string|null, integrity: string) {
+	[`msg:${ROOM_EVENT.INIT}`](roomId: string, publicMessage: string|null, integrity: string) {
 		this.#roomInitResolvers.resolve(roomId);
 		this.roomId = roomId;
 		this.message = publicMessage;
 		this.integrity = integrity;
 	}
 	
-	async ["msg:connectionMessage"](conId: number, ...args: any[]){
+	async [`msg:${ROOM_EVENT.CONNECTION_MESSAGE}`](conId: number, ...args: any[]){
 		if (args[0] !== "$rpc") return;
 		const [_key, _channelId, _operationId, callId, methodPath, callArgs] = args;
 		try {
@@ -76,26 +93,25 @@ class RoomHandler extends EventEmitter<any> {
 	}
 	
 	join(...conId: number[]){
-		this.ws.send(serialize("join", conId));
+		this.ws.send(serialize(ROOM_ACTION.JOIN, conId));
 	}
 	
 	kick(conId: number|number[], message?: string){
-		this.ws.send(serialize("kick", conId, message));
+		this.ws.send(serialize(ROOM_ACTION.KICK, conId, message));
 	}
 	
 	setPublicMessage(msg: string|null) {
-		this.ws.send(serialize("publicMessage", msg));
+		this.ws.send(serialize(ROOM_ACTION.PUBLIC_MESSAGE, msg));
 	}
 	
 	destroy() {
-		this.ws.send(serialize("destroy"));
+		this.ws.send(serialize(ROOM_ACTION.DESTROY));
 	}
 	
 	broadcast(path: any[], msg: any[]) {
-		this.ws.send(serialize("broadcast", "$rpc", undefined, 4, path, msg));
+		this.ws.send(serialize(ROOM_ACTION.BROADCAST, "$rpc", undefined, 4, path, msg));
 	}
 }
-
 
 describe("ws", {timeout: 30000}, () => {
 	it("method and join", {timeout: 1000}, async () => {
@@ -106,7 +122,7 @@ describe("ws", {timeout: 30000}, () => {
 				return 1000 + arg;
 			}
 		});
-		roomHandler.on("connectionEnter", (id) => {
+		roomHandler.on(ROOM_EVENT.CONNECTION_ENTER, (id) => {
 			roomHandler.join(id);
 		})
 		await roomHandler.init;
@@ -120,7 +136,7 @@ describe("ws", {timeout: 30000}, () => {
 		await using fastify = await createServer();
 		using roomWs = fastify.injectWebsocket("/room/ws")
 		const roomHandler = new RoomHandler(roomWs);
-		roomHandler.on("connectionEnter", (id) => {
+		roomHandler.on(ROOM_EVENT.CONNECTION_ENTER, (id) => {
 			roomHandler.join(id);
 			roomHandler.send(id, ["msg"], ["hello world"]);
 		});
@@ -136,7 +152,7 @@ describe("ws", {timeout: 30000}, () => {
 		await using fastify = await createServer();
 		using roomWs = fastify.injectWebsocket("/room/ws")
 		const roomHandler = new RoomHandler(roomWs);
-		roomHandler.on("connectionEnter", (id) => {
+		roomHandler.on(ROOM_EVENT.CONNECTION_ENTER, (id) => {
 			roomHandler.kick(id);
 		});
 		await roomHandler.init;
@@ -152,7 +168,7 @@ describe("ws", {timeout: 30000}, () => {
 				roomHandler.kick(this.connection, "kick-me")
 			}
 		});
-		roomHandler.on("connectionEnter", (id) => {
+		roomHandler.on(ROOM_EVENT.CONNECTION_ENTER, (id) => {
 			roomHandler.join(id);
 		});
 		await roomHandler.init;
@@ -168,7 +184,7 @@ describe("ws", {timeout: 30000}, () => {
 		using roomWs = fastify.injectWebsocket("/room/ws?message=testMessage")
 		const roomHandler = new RoomHandler(roomWs);
 		const messages: string[][] = []
-		roomHandler.on("messageChange", (...args) => messages.push(args));
+		roomHandler.on(ROOM_EVENT.MESSAGE_CHANGE, (...args) => messages.push(args));
 		await roomHandler.init;
 		assert.equal(roomHandler.message, "testMessage");
 		roomHandler.setPublicMessage("nextMessage");
@@ -181,7 +197,7 @@ describe("ws", {timeout: 30000}, () => {
 		await using fastify = await createServer();
 		using roomWs = fastify.injectWebsocket("/room/ws?integrity=custom:a")
 		const roomHandler = new RoomHandler(roomWs);
-		roomHandler.on("connectionEnter", (id) => {
+		roomHandler.on(ROOM_EVENT.CONNECTION_ENTER, (id) => {
 			roomHandler.join(id);
 		});
 		await roomHandler.init;
@@ -214,7 +230,7 @@ describe("ws", {timeout: 30000}, () => {
 		await using fastify = await createServer();
 		using roomWs = fastify.injectWebsocket("/room/ws")
 		const roomHandler = new RoomHandler(roomWs);
-		roomHandler.on("connectionEnter", (id) => roomHandler.join(id));
+		roomHandler.on(ROOM_EVENT.CONNECTION_ENTER, (id) => roomHandler.join(id));
 		await roomHandler.init;
 		using ws = fastify.injectWebsocket(`/room/${roomHandler.roomId}`);
 		const broadcastPromise = ws.rpcWaitEvent((val) => val === "msg")
