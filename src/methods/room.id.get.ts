@@ -9,7 +9,9 @@ const querySchema = {
 	type: 'object',
 	properties: {
 		integrity: {type: 'string'},
-		params: {type: 'string'}
+		params: {type: 'string'},
+		allowInspect: {type: 'boolean'},
+		errorLog: {type: 'string'},
 	},
 	additionalProperties: false
 } as const;
@@ -34,7 +36,9 @@ export const roomIdGet = (varhub: Hub): FastifyPluginCallback => async (fastify)
 			const room = varhub.getRoom(params.roomId);
 			const roomIntegrity = varhub.getRoomIntegrity(params.roomId);
 			const needCheckIntegrity = Boolean(roomIntegrity || query.integrity);
-			const integrityMismatch = needCheckIntegrity && !timingSafeEqual(Buffer.from(roomIntegrity ?? ""), Buffer.from(query.integrity ?? ""));
+			const roomBuf = Buffer.from(roomIntegrity ?? "");
+			const qBuf = Buffer.from(query.integrity ?? "");
+			const integrityMismatch = needCheckIntegrity && !((roomBuf.length === qBuf.length) && timingSafeEqual(roomBuf, qBuf));
 			if (!room || integrityMismatch) {
 				return reply.type("application/json").code(404).send({
 					type: 'NotFound',
@@ -67,8 +71,23 @@ export const roomIdGet = (varhub: Hub): FastifyPluginCallback => async (fastify)
 				reject();
 			}
 			const onJoin = () => {clear(); resolve();}
-			const onDisconnect = () => {
+			const onDisconnect = (_online: boolean, reason: any) => {
 				roomConnection.off("event", onEvent);
+				if (typeof reason !== "object" && typeof reason !== "function") {
+					reply.type("application/json").code(401).send(JSON.stringify({
+						type: 'Closed',
+						message: reason
+					}));
+				} else {
+					let message: string | undefined = undefined;
+					try {
+						message = JSON.stringify(reason);
+					} catch {}
+					reply.type("application/json").code(403).send(JSON.stringify({
+						type: 'Closed',
+						message: message
+					}));
+				}
 				clear();
 				reject();
 			}
@@ -105,7 +124,7 @@ export const roomIdGet = (varhub: Hub): FastifyPluginCallback => async (fastify)
 					message: `Room not found OR not public OR wrong room integrity`
 				});
 			}
-			return reply.code(200).send(JSON.stringify(roomMessage));
+			return reply.type("application/json").code(200).send(JSON.stringify(roomMessage));
 		},
 		
 		wsHandler(websocket, request){

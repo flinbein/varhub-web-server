@@ -1,5 +1,5 @@
 import { Hub, type Room, type Connection } from "@flinbein/varhub";
-import Fastify from "fastify";
+import Fastify, { FastifyReply, FastifyRequest } from "fastify";
 import { fastifyRequestContext } from '@fastify/request-context';
 import fastifyWebSocket from "@fastify/websocket";
 import cors from '@fastify/cors'
@@ -13,6 +13,8 @@ import { logIdGet } from "./methods/log.id.get.js";
 import { roomIdInspectKey } from "./methods/room.id.inspect.key.get.js";
 import { baseGet } from "./methods/get.js";
 import { roomWsGet } from "./methods/room.ws.get.js";
+import { TempMap } from "./TempMap.js";
+import { type } from "node:os";
 
 declare module '@fastify/request-context' {
 	interface RequestContextData {
@@ -36,6 +38,7 @@ export default async function (
 	} = {}
 ) {
 	const fastify = Fastify();
+	const errorsTempMap = new TempMap<string, any>(10000);
 	
 	await fastify.register(cors); // allow cors
 	await fastify.register(fastifyRequestContext, {
@@ -46,11 +49,24 @@ export default async function (
 	fastify.addHook("preValidation", async (request, reply) => {
 		const userAgentHeader = request.headers["user-agent"];
 		if (userAgentHeader?.includes("VARHUB-API")) {
-			reply.code(403).send({
-				type: "forbidden",
+			reply.type("application/json").code(403).send({
+				type: "Forbidden",
 				message: `forbidden for user-agent: ${userAgentHeader}`,
 			});
 		}
+	})
+	
+	fastify.addHook('onSend', (request, reply, payload, done) => {
+		if (!request.headers.upgrade) return done(null, payload);
+		const errorLog: string | undefined = (request.query as any).errorLog;
+		if (!reply.statusCode || reply.statusCode < 400) return done(null, payload);
+		if (!errorLog) return done(null, payload);
+		errorsTempMap.set(errorLog, payload);
+		done(null, payload)
+	})
+	
+	fastify.addHook("onClose", () => {
+		errorsTempMap.clear();
 	})
 	
 	await fastify.register(baseGet(config)); // GET /
@@ -60,7 +76,7 @@ export default async function (
 	await fastify.register(roomIdGet(varhub)); // WS /room/:roomId
 	await fastify.register(roomIdInspectKey(varhub)); // WS /room/:id/inspect/:key
 	await fastify.register(roomsIntegrityGet(varhub)); // GET /rooms/:integrity
-	await fastify.register(logIdGet(loggers)); // WS /log
+	await fastify.register(logIdGet(loggers, errorsTempMap)); // WS /log
 	
 	return fastify;
 }

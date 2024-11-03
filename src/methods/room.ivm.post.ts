@@ -35,7 +35,7 @@ const bodySchema = {
 export const roomIvmPost = (
 	varhub: Hub,
 	loggers: Map<string, Logger>,
-	controllerConfig: {inspect?: boolean} = {}
+	controllerConfig: {inspect?: boolean} = {},
 ): FastifyPluginCallback => async (fastify) => {
 	fastify.withTypeProvider<JsonSchemaToTsProvider>().post(
 		'/room/ivm',
@@ -85,7 +85,7 @@ export const roomIvmPost = (
 					const websocket = logger?.websocket;
 					if (logger && websocket?.readyState === 1) {
 						const session = ctrl.createInspectorSession();
-						session.on("response", (ignored, msg) => websocket.send(msg));
+						session.on("response", (_ignored, msg) => websocket.send(msg));
 						session.on("notification", (msg) => {
 							websocket.send(msg)
 						});

@@ -3,6 +3,7 @@ import CreateServer from "../src/CreateServer.js";
 import { Hub } from "@flinbein/varhub";
 import {parse, serialize} from "@flinbein/xjmapper";
 import type { Logger } from "../src/Logger.js";
+import EventEmitter from "node:events";
 
 type MockWebsocket = WebSocket & Disposable & {
 	joinPromise: Promise<MockWebsocket>,
@@ -13,8 +14,9 @@ type MockWebsocket = WebSocket & Disposable & {
 	inspectorCreateContextMap: () => ReturnType<typeof inspectorCreateContextMap>,
 	inspectorEval: (contextUniqueId: any, expression: string) => ReturnType<typeof inspectorEval>,
 }
-export const createServer = async (
-): Promise<Awaited<ReturnType<typeof CreateServer>> & {
+export const createServer = async (config?: {
+	varhub?: Hub
+}): Promise<Awaited<ReturnType<typeof CreateServer>> & {
 	url: string,
 	wsUrl: string,
 	loggers: Map<string, Logger>
@@ -23,7 +25,7 @@ export const createServer = async (
 	injectGet: (path: string) => any
 	injectWebsocket: (path: string) => MockWebsocket
 }> => {
-	const varhub = new Hub();
+	const varhub = config?.varhub ?? new Hub();
 	const loggers = new Map();
 	const fastify = await CreateServer({varhub, loggers, config: {ivm: {inspect: true}}});
 	fastify.addHook("onClose", () => {
@@ -52,8 +54,7 @@ export const createServer = async (
 	(fastify as any).injectGet = (fastify as any).injectMethod.bind(fastify, "GET");
 	(fastify as any).injectWebsocket = (path: string) => {
 		const ws = new WebSocket(`${wsUrl}${path}`);
-		
-		(ws as any).joinPromise = new Promise<MockWebsocket>((resolve, reject) => {
+		const joinPromise = new Promise<MockWebsocket>((resolve, reject) => {
 			const clear = <T extends any[]>(fn: (...arg: T) => void, ...val: T) => {
 				ws.off("open", onOpen);
 				ws.off("close", onClose);
@@ -71,6 +72,8 @@ export const createServer = async (
 			ws.on("close", onClose);
 			ws.on("error", onError);
 		});
+		joinPromise.catch(() => {});
+		(ws as any).joinPromise = joinPromise;
 		(ws as any).rpcCall = (...callArgs: any[]) => (rpcCall as any)(ws, ...callArgs);
 		(ws as any).inspectorCall = (...callArgs: any[]) => (inspectorCall as any)(ws, ...callArgs);
 		(ws as any).rpcWaitEvent = (...callArgs: any[]) => (rpcWaitEvent as any)(ws, ...callArgs);
@@ -200,4 +203,112 @@ function inspectorCreateContextMap(ws: WebSocket): Map<number, string> {
 		}
 	});
 	return contextMap;
+}
+
+export const enum ROOM_EVENT {
+	INIT = 0,
+	MESSAGE_CHANGE = 1,
+	CONNECTION_JOIN = 2,
+	CONNECTION_ENTER = 3,
+	CONNECTION_MESSAGE = 4,
+	CONNECTION_CLOSED = 5,
+}
+export const enum ROOM_ACTION {
+	JOIN = 0,
+	KICK = 1,
+	PUBLIC_MESSAGE = 2,
+	DESTROY = 3,
+	SEND = 4,
+	BROADCAST = 5,
+}
+
+export class RoomHandler extends EventEmitter<any> {
+	message: string|null = null;
+	lobbyConnections = new Set<number>();
+	onlineConnections = new Set<number>();
+	#roomInitResolvers = (Promise as any).withResolvers();
+	init = this.#roomInitResolvers.promise as Promise<string>;
+	roomId: string|null = null;
+	integrity: string|null = null;
+	
+	constructor(private ws: WebSocket, private methods?: any){
+		super();
+		ws.on("message", (msg: any) => {
+			const [eventName, ...params] = parse(msg);
+			this.emit(eventName, ...params);
+			if ((this as any)[`msg:${eventName}`]) {
+				(this as any)[`msg:${eventName}`](...params);
+			}
+			
+		});
+		ws.on("close", (code, reason) => {
+			this.#roomInitResolvers.reject(new Error(`room closed: ${code} ${reason}`));
+		});
+	}
+	
+	#sendResponse(conId: number|number[], callId: any, error: boolean, result: any){
+		this.ws.send(serialize(ROOM_ACTION.SEND, conId, "$rpc", undefined, error ? 3 : 0, callId, result));
+	}
+	
+	send(conId: number|number[], path: any[], msg: any[]){
+		this.ws.send(serialize(ROOM_ACTION.SEND, conId, "$rpc", undefined, 4,  path, msg));
+	}
+	
+	[`msg:${ROOM_EVENT.MESSAGE_CHANGE}`](msg: string){
+		this.message = msg
+	}
+	
+	[`msg:${ROOM_EVENT.CONNECTION_JOIN}`](conId: number){
+		this.lobbyConnections.add(conId);
+	}
+	
+	[`msg:${ROOM_EVENT.CONNECTION_ENTER}`](conId: number){
+		this.lobbyConnections.delete(conId);
+		this.onlineConnections.add(conId);
+	}
+	
+	[`msg:${ROOM_EVENT.CONNECTION_CLOSED}`](conId: number) {
+		this.lobbyConnections.delete(conId);
+		this.onlineConnections.delete(conId);
+	}
+	
+	[`msg:${ROOM_EVENT.INIT}`](roomId: string, publicMessage: string|null, integrity: string) {
+		this.#roomInitResolvers.resolve(roomId);
+		this.roomId = roomId;
+		this.message = publicMessage;
+		this.integrity = integrity;
+	}
+	
+	async [`msg:${ROOM_EVENT.CONNECTION_MESSAGE}`](conId: number, ...args: any[]){
+		if (args[0] !== "$rpc") return;
+		const [_key, _channelId, _operationId, callId, methodPath, callArgs] = args;
+		try {
+			let target: any = this.methods;
+			for (const m of methodPath) target = target[m];
+			const result = await target.call({connection: conId}, ...callArgs);
+			this.#sendResponse(conId, callId, false, result);
+		} catch (error) {
+			this.#sendResponse(conId, callId, true, error);
+		}
+	}
+	
+	join(...conId: number[]){
+		this.ws.send(serialize(ROOM_ACTION.JOIN, conId));
+	}
+	
+	kick(conId: number|number[], message?: string){
+		this.ws.send(serialize(ROOM_ACTION.KICK, conId, message));
+	}
+	
+	setPublicMessage(msg: string|null) {
+		this.ws.send(serialize(ROOM_ACTION.PUBLIC_MESSAGE, msg));
+	}
+	
+	destroy() {
+		this.ws.send(serialize(ROOM_ACTION.DESTROY));
+	}
+	
+	broadcast(path: any[], msg: any[]) {
+		this.ws.send(serialize(ROOM_ACTION.BROADCAST, "$rpc", undefined, 4, path, msg));
+	}
 }

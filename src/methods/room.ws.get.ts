@@ -2,6 +2,7 @@ import { Connection, Hub, Room } from "@flinbein/varhub";
 import type {JsonSchemaToTsProvider} from "@fastify/type-provider-json-schema-to-ts";
 import type { FastifyPluginCallback } from "fastify/types/plugin.js";
 import {parse, serialize} from "@flinbein/xjmapper";
+import { FastifyReply, FastifyRequest } from "fastify";
 
 const enum ROOM_EVENT {
 	INIT = 0,
@@ -25,6 +26,7 @@ const querySchema = {
 	properties: {
 		integrity: {type: 'string', pattern: "^custom:.*"},
 		message: {type: 'string'},
+		errorLog: {type: 'string'},
 	},
 	additionalProperties: false
 } as const;

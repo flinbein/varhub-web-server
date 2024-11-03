@@ -5,6 +5,7 @@ import qjsControllerPackageJson from "@flinbein/varhub-controller-quickjs/packag
 import varhubPackageJson from "@flinbein/varhub/package.json" with {type : "json"}
 import varhubApiNetworkPackageJson from "@flinbein/varhub-api-network/package.json" with {type : "json"}
 import jsonStableHashPackageJson from "@flinbein/json-stable-hash/package.json" with {type : "json"}
+import xjmapperPackageJson from "@flinbein/xjmapper/package.json" with {type : "json"}
 
 export const baseGet = (config: any): FastifyPluginCallback => async (fastify) => {
 	const appInfoJson = JSON.stringify({
@@ -16,6 +17,7 @@ export const baseGet = (config: any): FastifyPluginCallback => async (fastify) =
 			varhub: varhubPackageJson.version,
 			apiNetwork: varhubApiNetworkPackageJson.version,
 			jsonStableHash: jsonStableHashPackageJson.version,
+			xjmapper: xjmapperPackageJson.version,
 		},
 		config,
 	})

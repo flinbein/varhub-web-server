@@ -4,6 +4,14 @@ import type {JsonSchemaToTsProvider} from "@fastify/type-provider-json-schema-to
 import type { FastifyPluginCallback } from "fastify/types/plugin.js";
 import { IsolatedVMController } from "@flinbein/varhub-controller-isolated-vm";
 
+const querySchema = {
+	type: 'object',
+	properties: {
+		errorLog: {type: 'string'},
+	},
+	additionalProperties: false
+} as const;
+
 const paramsSchema = {
 	type: 'object',
 	properties: {
@@ -18,10 +26,10 @@ export const roomIdInspectKey = (varhub: Hub): FastifyPluginCallback => async (f
 	
 	fastify.withTypeProvider<JsonSchemaToTsProvider>().route({
 		method: 'GET',
-		schema: {params: paramsSchema},
+		schema: {params: paramsSchema, querystring: querySchema},
 		url: '/room/:roomId/inspect/:inspect',
 		async preHandler(request, reply) {
-			const {params, query} = request;
+			const {params} = request;
 			const room = varhub.getRoom(params.roomId);
 			const inspect: string = (room as any)[Symbol.for("varhub:inspect_key")] ?? "";
 			if (!room || !inspect || !timingSafeEqual(Buffer.from(inspect), Buffer.from(params.inspect))) {

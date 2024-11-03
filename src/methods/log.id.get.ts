@@ -1,6 +1,7 @@
 import type {JsonSchemaToTsProvider} from "@fastify/type-provider-json-schema-to-ts";
 import type { FastifyPluginCallback } from "fastify/types/plugin.js";
 import { Logger } from "../Logger.js";
+import { TempMap } from "../TempMap.js";
 
 const paramsSchema = {
 	type: 'object',
@@ -11,7 +12,7 @@ const paramsSchema = {
 	additionalProperties: false
 } as const;
 
-export const logIdGet = (loggers: Map<string, Logger>): FastifyPluginCallback => async (fastify) => {
+export const logIdGet = (loggers: Map<string, Logger>,errorMap: TempMap<string, any>): FastifyPluginCallback => async (fastify) => {
 	
 	fastify.withTypeProvider<JsonSchemaToTsProvider>().route({
 		method: "GET",
@@ -19,12 +20,23 @@ export const logIdGet = (loggers: Map<string, Logger>): FastifyPluginCallback =>
 		schema: {params: paramsSchema},
 		preHandler(request, reply, done) {
 			const { loggerId } = request.params;
-			if (loggers.has(loggerId)) throw new Error("logger with this id already in use");
+			if (request.headers.upgrade && loggers.has(loggerId)) throw new Error("logger with this id already in use");
 			done();
 		},
-		handler(){
-			throw new Error("unimplemented");
+		
+		handler(request, reply){
+			const { loggerId } = request.params;
+			if (!errorMap.has(loggerId)) reply.callNotFound();
+			const error = errorMap.get(loggerId);
+			if (error == null) return reply.callNotFound();
+			errorMap.delete(loggerId);
+			try {
+				JSON.parse(error);
+				return reply.type("application/json").code(200).send(error)
+			} catch {}
+			return reply.type("text/plain").code(200).send(error)
 		},
+		
 		async wsHandler(websocket, request) {
 			const { loggerId } = request.params;
 			if (loggers.has(loggerId)) {

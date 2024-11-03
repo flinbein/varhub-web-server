@@ -1,6 +1,7 @@
 import assert from "node:assert";
 import { WebSocket } from "ws";
 import { describe, it } from "node:test";
+// @ts-ignore
 import {createServer} from "./utils.js";
 
 
