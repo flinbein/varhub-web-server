@@ -87,6 +87,27 @@ describe("client", {timeout: 2000}, () => {
 		assert.equal(logData.type, "NotFound");
 	})
 	
+	it("inspector reason ", {timeout: 1000}, async () => {
+		await using fastify = await createServer();
+		const responseJson = await fastify.injectPost("/room/ivm", {
+			message: 'open',
+			inspect: true,
+			module: {
+				main: "index.js",
+				source: {
+					["index.js"]: /* language=javascript */ `
+                        import room from "varhub:room";
+                        room.on("connection", c => c.close("custom-close-reason"))
+					`
+				},
+			},
+		});
+		const ws = fastify.injectWebsocket(`/room/${responseJson.id}?errorLog=123&allowInspect=false`);
+		await new Promise(r => ws.addEventListener("error", r));
+		const logData = await fastify.injectGet("log/123");
+		assert.equal(logData.type, "Inspect");
+	})
+	
 	it("kick reason params", {timeout: 1000}, async () => {
 		await using fastify = await createServer();
 		const roomWs = fastify.injectWebsocket("/room/ws");

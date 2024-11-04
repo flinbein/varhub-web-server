@@ -58,6 +58,14 @@ export const roomIdGet = (varhub: Hub): FastifyPluginCallback => async (fastify)
 					message: `params is not valid JSON array`
 				});
 			}
+			
+			if (!query.allowInspect && (room as any)[Symbol.for("varhub:inspect_key")]) {
+				return reply.type("application/json").code(403).send({
+					type: 'Inspect',
+					message: `room is created with inspect mode. You need to set allowInspect=true`
+				});
+			}
+			// todo: allowInspect
 			const roomConnection = room.createConnection();
 			
 			const eventsCache: any[][] = [];

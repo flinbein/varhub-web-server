@@ -14,11 +14,11 @@ describe("ivm", {timeout: 30000}, () => {
 				main: "index.js",
 				source: {
 					["index.js"]: /* language=javascript */ `
-								let counter = 100;
-								export function test(){
-									return [this.parameters[0], counter++]
-								}
-							`
+						let counter = 100;
+						export function test(){
+							return [this.parameters[0], counter++]
+						}
+					`
 				},
 			},
 		});
@@ -82,7 +82,7 @@ describe("ivm", {timeout: 30000}, () => {
 		});
 		
 		using ws = await fastify.injectWebsocket(
-			`/room/${responseJson.id}?params=${encodeURIComponent(JSON.stringify(["myName"]))}`
+			`/room/${responseJson.id}?params=${encodeURIComponent(JSON.stringify(["myName"]))}&allowInspect=true`
 		).joinPromise;
 		const waitMethodLogPromise = inspectorWs.inspectorWaitMethod("Runtime.consoleAPICalled");
 		await ws.rpcCall("evaluate", "console.log(10000 + value)");
@@ -118,7 +118,7 @@ describe("ivm", {timeout: 30000}, () => {
 		void inspectorWs.inspectorCall("Debugger.enable", {maxScriptsCacheSize:10000000});
 		
 		using ws = await fastify.injectWebsocket(
-			`/room/${responseJson.id}?params=${encodeURIComponent(JSON.stringify(["myName"]))}`
+			`/room/${responseJson.id}?params=${encodeURIComponent(JSON.stringify(["myName"]))}&allowInspect=true`
 		).joinPromise;
 		
 		const methodLogPromise = inspectorWs.inspectorWaitMethod("Runtime.consoleAPICalled")
