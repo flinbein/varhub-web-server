@@ -1,4 +1,4 @@
-import type { WebSocket, RawData } from "ws";
+import type { WebSocket } from "ws";
 import type { Room, Connection } from "@flinbein/varhub";
 import type { QuickJSController } from "@flinbein/varhub-controller-quickjs";
 import { serialize } from "@flinbein/xjmapper";

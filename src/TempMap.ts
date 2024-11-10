@@ -1,8 +1,6 @@
-import { clearTimeout } from "node:timers";
-
 export class TempMap<K, V> extends Map<K, V> {
-	#timerMap = new Map<K, ReturnType<typeof setTimeout>>();
-	#time;
+	readonly #timerMap = new Map<K, ReturnType<typeof setTimeout>>();
+	readonly #time;
 	
 	constructor(time: number) {
 		super();

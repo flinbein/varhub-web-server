@@ -1,5 +1,5 @@
 import { Hub, type Room, type Connection } from "@flinbein/varhub";
-import Fastify, { FastifyReply, FastifyRequest } from "fastify";
+import Fastify from "fastify";
 import { fastifyRequestContext } from '@fastify/request-context';
 import fastifyWebSocket from "@fastify/websocket";
 import cors from '@fastify/cors'
@@ -14,7 +14,6 @@ import { roomIdInspectKey } from "./methods/room.id.inspect.key.get.js";
 import { baseGet } from "./methods/get.js";
 import { roomWsGet } from "./methods/room.ws.get.js";
 import { TempMap } from "./TempMap.js";
-import { type } from "node:os";
 
 declare module '@fastify/request-context' {
 	interface RequestContextData {
