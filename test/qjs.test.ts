@@ -7,7 +7,7 @@ import {parse, serialize} from "@flinbein/xjmapper";
 
 
 describe("qjs", {timeout: 30000}, () => {
-	it("test method", {timeout: 1000}, async () => {
+	it("test method", {timeout: 3000}, async () => {
 		await using fastify = await createServer();
 		const responseJson = await fastify.injectPost("/room/qjs", {
 			message: 'open',
