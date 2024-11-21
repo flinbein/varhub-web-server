@@ -1,5 +1,8 @@
-import networkApi from "./network.js";
+import type { Hub, ApiSource } from "@flinbein/varhub";
+import configureNetworkApi from "./network.js";
 
-export default {
-	"network": networkApi
+export default function(hub: Hub): ApiSource {
+	return {
+		"network": configureNetworkApi(hub)
+	};
 }

@@ -4,6 +4,7 @@ import { fastifyRequestContext } from '@fastify/request-context';
 import fastifyWebSocket from "@fastify/websocket";
 import cors from '@fastify/cors'
 
+import configureApi from "./api/index.js"
 import { Logger } from "./Logger.js";
 import { roomQjsPost } from "./methods/room.qjs.post.js";
 import { roomIvmPost } from "./methods/room.ivm.post.js";
@@ -36,6 +37,7 @@ export default async function (
 		config?: ServerConfig,
 	} = {}
 ) {
+	const apiSource = configureApi(varhub)
 	const fastify = Fastify();
 	const errorsTempMap = new TempMap<string, any>(10000);
 	
@@ -69,8 +71,8 @@ export default async function (
 	})
 	
 	await fastify.register(baseGet(config)); // GET /
-	await fastify.register(roomQjsPost(varhub, loggers)); // POST /room, /room/quickjs
-	await fastify.register(roomIvmPost(varhub, loggers, config.ivm)); // POST /room/ivm
+	await fastify.register(roomQjsPost(varhub, apiSource, loggers)); // POST /room, /room/quickjs
+	await fastify.register(roomIvmPost(varhub, apiSource, loggers, config.ivm)); // POST /room/ivm
 	await fastify.register(roomWsGet(varhub)); // WS /room/client
 	await fastify.register(roomIdGet(varhub)); // WS /room/:roomId
 	await fastify.register(roomIdInspectKey(varhub)); // WS /room/:id/inspect/:key

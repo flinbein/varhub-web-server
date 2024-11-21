@@ -1,6 +1,7 @@
+import { Hub } from "@flinbein/varhub";
 import createNetworkApi from "@flinbein/varhub-api-network";
 
-export default createNetworkApi({
+export default (hub: Hub) => createNetworkApi({
 	fetchPoolTimeout: 10_000, // 10s
 	fetchPoolCount: 10,
 	fetchMaxAwaitingProcesses: 100,
@@ -27,8 +28,11 @@ export default createNetworkApi({
 	fetchAllowIp: true,
 	domainBlacklist: ['localhost', /\.local$/],
 	domainWhitelist: [/\./],
-	// fetchMaxContentLength:  100 /* 100 kB */ * 1000,
-	fetchHeaders: {
-		"user-agent": "Mozilla/5.0 (compatible; VARHUB-API/1.0)",
+	fetchHeaders: (room, headers) => {
+		headers["user-agent"] = "Mozilla/5.0 (compatible; VARHUB-API/1.0)";
+		headers["x-varhub-integrity"] = [...hub.getRegisteredId(room)]
+		.map(id => hub.getRoomIntegrity(id))
+		.filter(Boolean)
+		.join(",");
 	}
 })

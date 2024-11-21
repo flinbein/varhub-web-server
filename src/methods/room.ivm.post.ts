@@ -1,11 +1,10 @@
-import { ApiHelperController, type Hub, Room, TimeoutDestroyController } from "@flinbein/varhub";
+import { ApiHelperController, ApiSource, type Hub, Room, TimeoutDestroyController } from "@flinbein/varhub";
 import jsonHash from "@flinbein/json-stable-hash"
 import { randomUUID } from "node:crypto";
 import { IsolatedVMController } from "@flinbein/varhub-controller-isolated-vm";
 import type { JsonSchemaToTsProvider } from "@fastify/type-provider-json-schema-to-ts";
 import type { FastifyPluginCallback } from "fastify";
 import { Logger } from "../Logger.js";
-import apiMap from "../api/index.js";
 
 const bodySchema = {
 	type: 'object',
@@ -34,6 +33,7 @@ const bodySchema = {
 
 export const roomIvmPost = (
 	varhub: Hub,
+	apiSource: ApiSource,
 	loggers: Map<string, Logger>,
 	controllerConfig: {inspect?: boolean} = {},
 ): FastifyPluginCallback => async (fastify) => {
@@ -67,7 +67,7 @@ export const roomIvmPost = (
 			}
 			
 			new TimeoutDestroyController(room, 1000 * 60 * 2 /* 2 min */);
-			const apiHelperController = new ApiHelperController(room, apiMap);
+			const apiHelperController = new ApiHelperController(room, apiSource);
 			
 			const ctrl = new IsolatedVMController(room, moduleParam, {
 				config,

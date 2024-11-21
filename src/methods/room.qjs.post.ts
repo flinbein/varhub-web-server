@@ -1,5 +1,4 @@
-import { type Hub, Room, TimeoutDestroyController, ApiHelperController } from "@flinbein/varhub";
-import apiMap from "../api/index.js";
+import { type Hub, Room, TimeoutDestroyController, ApiHelperController, ApiSource } from "@flinbein/varhub";
 import jsonHash from "@flinbein/json-stable-hash"
 import { QuickJSController } from "@flinbein/varhub-controller-quickjs";
 import { newQuickJSWASMModuleFromVariant, newQuickJSAsyncWASMModuleFromVariant } from "quickjs-emscripten";
@@ -34,7 +33,7 @@ const bodySchema = {
 	required: ["module"]
 } as const;
 
-export const roomQjsPost = (varhub: Hub, loggers: Map<string, Logger>): FastifyPluginCallback => async (fastify) => {
+export const roomQjsPost = (varhub: Hub, apiSource: ApiSource, loggers: Map<string, Logger>): FastifyPluginCallback => async (fastify) => {
 	const quickJS = await newQuickJSWASMModuleFromVariant(quickJsSyncVariant as any);
 	const quickJSAsync = await newQuickJSAsyncWASMModuleFromVariant(quickJsAsyncVariant as any);
 	
@@ -70,7 +69,7 @@ export const roomQjsPost = (varhub: Hub, loggers: Map<string, Logger>): FastifyP
 			}
 			
 			new TimeoutDestroyController(room, 1000 * 60 * 2 /* 2 min */);
-			const apiHelperController = new ApiHelperController(room, apiMap);
+			const apiHelperController = new ApiHelperController(room, apiSource);
 			
 			const logger = request.body.logger ? loggers.get(request.body.logger) : undefined;
 			const quickJsUsed = request.body.async ? quickJSAsync : quickJS;
