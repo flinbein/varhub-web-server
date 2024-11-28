@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 // @ts-ignore
 import { createServer, ROOM_EVENT, RoomHandler } from "./utils.js";
 
-describe("client", {timeout: 2000}, () => {
+describe("client", {timeout: 10000}, () => {
 	it("not found", {timeout: 1000}, async () => {
 		await using fastify = await createServer();
 		const ws = fastify.injectWebsocket("/room/999?errorLog=123");

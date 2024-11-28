@@ -73,7 +73,7 @@ export default async function (
 	await fastify.register(baseGet(config)); // GET /
 	await fastify.register(roomQjsPost(varhub, apiSource, loggers)); // POST /room, /room/quickjs
 	await fastify.register(roomIvmPost(varhub, apiSource, loggers, config.ivm)); // POST /room/ivm
-	await fastify.register(roomWsGet(varhub)); // WS /room/client
+	await fastify.register(roomWsGet(varhub)); // WS /room/ws
 	await fastify.register(roomIdGet(varhub)); // WS /room/:roomId
 	await fastify.register(roomIdInspectKey(varhub)); // WS /room/:id/inspect/:key
 	await fastify.register(roomsIntegrityGet(varhub)); // GET /rooms/:integrity
