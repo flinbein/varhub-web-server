@@ -15,11 +15,12 @@ describe("qjs", {timeout: 30000}, () => {
 				main: "index.js",
 				source: {
 					["index.js"]: /* language=javascript */ `
-								let counter = 100;
-								export function test(){
-									return [this.parameters[0], counter++]
-								}
-							`
+						let counter = 100;
+						import room from "varhub:room";
+						export function test(){
+							return [room.useConnection().parameters[0], counter++]
+						}
+					`
 				},
 			},
 		});

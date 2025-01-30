@@ -15,8 +15,9 @@ describe("ivm", {timeout: 30000}, () => {
 				source: {
 					["index.js"]: /* language=javascript */ `
 						let counter = 100;
+						import room from "varhub:room";
 						export function test(){
-							return [this.parameters[0], counter++]
+							return [room.useConnection().parameters[0], counter++]
 						}
 					`
 				},
